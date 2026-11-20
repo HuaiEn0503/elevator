@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>電梯許可證上傳紀錄</title>
+  <style>
+    :root {
+      --bg: #f4f6f9;
+      --card: #ffffff;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --primary: #2563eb;
+      --ok: #16a34a;
+      --warn: #d97706;
+      --err: #dc2626;
+      --info: #0284c7;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    input, select {
+      font-family: inherit;
+      font-size: 0.9rem;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--text);
+    }
+    main { max-width: 1440px; margin: 20px auto; padding: 0 20px 40px; }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .kpi {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      cursor: pointer;
+      transition: transform 0.12s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+      user-select: none;
+    }
+    .kpi:hover {
+      border-color: #93c5fd;
+      transform: translateY(-1px);
+    }
+    .kpi.active {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+      background: #f8fbff;
+    }
+    .kpi .label { font-size: 0.85rem; color: var(--muted); }
+    .kpi .val { font-size: 1.6rem; font-weight: 700; margin-top: 4px; }
+    .kpi .hint { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+    .c-ok { color: var(--ok); }
+    .c-warn { color: var(--warn); }
+    .c-err { color: var(--err); }
+    .c-info { color: var(--info); }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(360px, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+    @media (max-width: 1080px) {
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 20px;
+    }
+    .detail-panel {
+      position: sticky;
+      top: 16px;
+      margin-bottom: 0;
+    }
+    @media (max-width: 1080px) {
+      .detail-panel {
+        position: static;
+      }
+    }
+
+    .panel-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .panel-header h2 { margin: 0; font-size: 1.05rem; }
+    .filters { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      white-space: nowrap;
+    }
+    th { background: #f8fafc; font-weight: 600; color: #334155; }
+    tr:last-child td { border-bottom: 0; }
+    tr.data-row { cursor: pointer; }
+    tr.data-row:hover { background: #f1f5f9; }
+    tr.data-row.selected { background: #eff6ff; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+    .b-ok { background: #dcfce7; color: #166534; }
+    .b-warn { background: #fef3c7; color: #92400e; }
+    .b-err { background: #fee2e2; color: #991b1b; }
+    .b-muted { background: #f1f5f9; color: #475569; }
+
+    .lic-link {
+      color: var(--primary);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      font-weight: 600;
+    }
+    .lic-link:hover { opacity: 0.8; }
+
+    .detail-header-sub {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-bottom: 12px;
+    }
+    .detail-box {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 0.88rem;
+      max-height: 74vh;
+      overflow-y: auto;
+    }
+    .detail-meta {
+      color: var(--muted);
+      font-size: 0.82rem;
+      padding-bottom: 12px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .month-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    @media (max-width: 480px) {
+      .month-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .month-card {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      gap: 4px;
+      min-height: 132px;
+    }
+    .month-title {
+      font-weight: 700;
+      font-size: 0.96rem;
+      margin-bottom: 4px;
+    }
+    .month-line {
+      color: var(--muted);
+      font-size: 0.84rem;
+      line-height: 1.45;
+      word-break: break-all;
+    }
+    .month-val {
+      color: var(--text);
+      font-size: 0.86rem;
+      line-height: 1.4;
+      word-break: break-all;
+    }
+
+    .muted { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="kpi-grid" id="kpiGrid">
+      <div class="kpi active" data-filter="all" data-kpi="buildings">
+        <div class="label">查核大樓數</div>
+        <div class="val" id="kpiBuildings">0</div>
+        <div class="hint">點擊顯示全部大樓</div>
+      </div>
+      <div class="kpi" data-filter="all" data-kpi="uploaded">
+        <div class="label">已上傳總數</div>
+        <div class="val c-ok" id="kpiUploaded">0</div>
+        <div class="hint">點擊檢視全部清單</div>
+      </div>
+      <div class="kpi" data-filter="hasMissing" data-kpi="missing">
+        <div class="label">未上傳總數</div>
+        <div class="val c-warn" id="kpiMissing">0</div>
+        <div class="hint">點擊篩選有未上傳</div>
+      </div>
+      <div class="kpi" data-filter="hasUnknown" data-kpi="unknown">
+        <div class="label">待確認總數</div>
+        <div class="val c-info" id="kpiUnknown">0</div>
+        <div class="hint">點擊篩選有待確認</div>
+      </div>
+      <div class="kpi" data-filter="hasError" data-kpi="error">
+        <div class="label">查詢錯誤數</div>
+        <div class="val c-err" id="kpiError">0</div>
+        <div class="hint">點擊篩選查詢錯誤</div>
+      </div>
+    </section>
+
+    <div class="workspace">
+      <section class="panel" id="listPanel">
+        <div class="panel-header">
+          <h2 id="listTitle">查核結果清單（點擊列可查看右側明細）</h2>
+          <div class="filters">
+            <input type="text" id="searchInput" placeholder="搜尋大樓 / 服務編號 / 許可證..." />
+            <select id="statusFilter">
+              <option value="all">全部狀態</option>
+              <option value="hasMissing">有未上傳</option>
+              <option value="hasUnknown">有待確認</option>
+              <option value="hasError">有查詢錯誤</option>
+              <option value="allUploaded">全部已上傳</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>大樓名稱</th>
+                <th>服務編號</th>
+                <th>許可證編號</th>
+                <th>已上傳</th>
+                <th>未上傳</th>
+                <th>待確認</th>
+                <th>查詢狀態</th>
+                <th>更新時間</th>
+              </tr>
+            </thead>
+            <tbody id="resultTbody">
+              <tr><td colspan="8">載入中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <aside class="panel detail-panel" id="detailPanel">
+        <div class="panel-header" style="margin-bottom:6px;">
+          <h2 id="detailTitle">逐月查核明細</h2>
+        </div>
+        <div class="detail-header-sub" id="detailSub">請點擊左側任一查核大樓列以查看逐月紀錄</div>
+        <div class="detail-box" id="detailContent">
+          <div class="muted">尚未選擇大樓。</div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbwQRJldC4-U9yW4Y1bBFrggXIRvbVZvIM7Nbrin1B7zC6fbibW--9SbbDXhvLiYoGnk/exec";
+    const BASE_QR_URL = "https://cloudbm.nlma.gov.tw/ELS/ElsQuery.do?q=qr";
+    const DEFAULT_SEQ = "f8bc";
+
+    let allResults = [];
+    let selectedLicenseNo = null;
+    let activeKpi = "buildings";
+
+    function buildGovUrl(licenseNo, seq = DEFAULT_SEQ) {
+      return `${BASE_QR_URL}&ipno=${encodeURIComponent(licenseNo)}&seq=${encodeURIComponent(seq)}`;
+    }
+
+    function parseRecords(rawRecords) {
+      if (Array.isArray(rawRecords)) return rawRecords;
+      if (typeof rawRecords === "string" && rawRecords.trim()) {
+        try {
+          const parsed = JSON.parse(rawRecords);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (_) {
+          return [];
+        }
+      }
+      return [];
+    }
+
+    async function loadDashboard() {
+      try {
+        const res = await fetch(`${API_URL}?action=dashboard`, { cache: "no-store" });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || "回傳狀態異常");
+
+        allResults = (Array.isArray(data.results) ? data.results : []).map(r => ({
+          ...r,
+          records: parseRecords(r.records)
+        }));
+
+        renderKPIs(allResults);
+        renderTable();
+
+        if (selectedLicenseNo) {
+          const currentSelected = allResults.find(r => (r.licenseNo || r.buildingName) === selectedLicenseNo);
+          if (currentSelected) showDetail(currentSelected);
+        }
+      } catch (err) {
+        document.getElementById("resultTbody").innerHTML =
+          `<tr><td colspan="8" class="c-err">無法取得資料（${escapeHtml(err.message)}），請檢查 API 網址與權限設定。</td></tr>`;
+      }
+    }
+
+    function renderKPIs(list) {
+      let uploaded = 0, missing = 0, unknown = 0, errCnt = 0;
+      list.forEach(r => {
+        uploaded += Number(r.uploadedCount || 0);
+        missing += Number(r.missingCount || 0);
+        unknown += Number(r.unknownCount || 0);
+        if (String(r.fetchError || "").trim()) errCnt++;
+      });
+      document.getElementById("kpiBuildings").textContent = list.length;
+      document.getElementById("kpiUploaded").textContent = uploaded;
+      document.getElementById("kpiMissing").textContent = missing;
+      document.getElementById("kpiUnknown").textContent = unknown;
+      document.getElementById("kpiError").textContent = errCnt;
+    }
+
+    function syncKpiActiveState() {
+      const filterVal = document.getElementById("statusFilter").value;
+      document.querySelectorAll(".kpi").forEach(card => {
+        const kpiType = card.dataset.kpi;
+        const cardFilter = card.dataset.filter;
+        let isActive = false;
+
+        if (filterVal === "all") {
+          isActive = kpiType === activeKpi && (activeKpi === "buildings" || activeKpi === "uploaded");
+        } else {
+          isActive = cardFilter === filterVal;
+        }
+        card.classList.toggle("active", isActive);
+      });
+    }
+
+    function renderStatusBadge(r) {
+      const errText = String(r.fetchError || "").trim();
+      const missing = Number(r.missingCount || 0);
+      const unknown = Number(r.unknownCount || 0);
+      const uploaded = Number(r.uploadedCount || 0);
+
+      if (errText) {
+        return `<span class="badge b-err">${escapeHtml(errText)}</span>`;
+      }
+      if (missing > 0) {
+        return `<span class="badge b-warn">有未上傳 (${missing})</span>`;
+      }
+      if (unknown > 0) {
+        return `<span class="badge b-warn">待確認 (${unknown})</span>`;
+      }
+      if (uploaded > 0 || (Array.isArray(r.records) && r.records.length > 0)) {
+        return `<span class="badge b-ok">正常</span>`;
+      }
+      return `<span class="badge b-muted">無紀錄</span>`;
+    }
+
+    function renderTable() {
+      const q = document.getElementById("searchInput").value.trim().toLowerCase();
+      const filter = document.getElementById("statusFilter").value;
+      const tbody = document.getElementById("resultTbody");
+
+      syncKpiActiveState();
+
+      const filtered = allResults.filter(r => {
+        const matchText = !q ||
+          (r.buildingName || "").toLowerCase().includes(q) ||
+          (r.serviceNo || "").toLowerCase().includes(q) ||
+          (r.licenseNo || "").toLowerCase().includes(q);
+        if (!matchText) return false;
+
+        const errText = String(r.fetchError || "").trim();
+        const missing = Number(r.missingCount || 0);
+        const unknown = Number(r.unknownCount || 0);
+        const uploaded = Number(r.uploadedCount || 0);
+
+        if (filter === "hasMissing") return missing > 0;
+        if (filter === "hasUnknown") return unknown > 0;
+        if (filter === "hasError") return Boolean(errText);
+        if (filter === "allUploaded") return !errText && missing === 0 && unknown === 0 && uploaded > 0;
+        return true;
+      });
+
+      if (!filtered.length) {
+        tbody.innerHTML = `<tr><td colspan="8">查無符合條件的資料</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map((r, i) => {
+        const missVal = Number(r.missingCount || 0);
+        const missCell = missVal > 0
+          ? `<span class="badge b-warn">${missVal}</span>`
+          : `0`;
+        const rowKey = r.licenseNo || r.buildingName;
+        const isSelected = selectedLicenseNo && rowKey === selectedLicenseNo;
+        const licHtml = r.licenseNo
+          ? `<a class="lic-link" href="${escapeHtml(buildGovUrl(r.licenseNo))}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">${escapeHtml(r.licenseNo)} ↗</a>`
+          : "—";
+
+        return `
+          <tr class="data-row ${isSelected ? "selected" : ""}" data-idx="${i}">
+            <td><strong>${escapeHtml(r.buildingName || "—")}</strong></td>
+            <td>${escapeHtml(r.serviceNo || "—")}</td>
+            <td>${licHtml}</td>
+            <td class="c-ok">${Number(r.uploadedCount || 0)}</td>
+            <td>${missCell}</td>
+            <td>${Number(r.unknownCount || 0)}</td>
+            <td>${renderStatusBadge(r)}</td>
+            <td>${escapeHtml(r.updatedAt || "—")}</td>
+          </tr>
+        `;
+      }).join("");
+
+      tbody.querySelectorAll("tr.data-row").forEach(tr => {
+        tr.addEventListener("click", () => {
+          const item = filtered[Number(tr.dataset.idx)];
+          selectedLicenseNo = item.licenseNo || item.buildingName;
+          renderTable();
+          showDetail(item);
+        });
+      });
+    }
+
+    function showDetail(item) {
+      const title = document.getElementById("detailTitle");
+      const sub = document.getElementById("detailSub");
+      const content = document.getElementById("detailContent");
+
+      title.textContent = item.buildingName || "未命名大樓";
+      sub.textContent = `服務編號：${item.serviceNo || "-"} ｜ 許可證：${item.licenseNo || "-"}`;
+
+      if (String(item.fetchError || "").trim()) {
+        content.innerHTML = `
+          <div class="detail-meta">更新時間：${escapeHtml(item.updatedAt || "-")}</div>
+          <div class="c-err"><strong>查詢錯誤：</strong>${escapeHtml(item.fetchError)}</div>
+        `;
+        return;
+      }
+
+      const records = Array.isArray(item.records) ? item.records : [];
+      if (!records.length) {
+        content.innerHTML = `
+          <div class="detail-meta">共 0 個查詢月份｜更新時間：${escapeHtml(item.updatedAt || "-")}</div>
+          <div class="muted">目前無逐月維護紀錄明細。</div>
+        `;
+        return;
+      }
+
+      const cardsHtml = records.map(m => {
+        const statusText = m.status || "待確認";
+        const statusClass = statusText === "已上傳"
+          ? "c-ok"
+          : (statusText === "尚未上傳" ? "c-err" : "c-warn");
+        const titleText = m.title || `${m.year || ""}年${m.month || ""}月`;
+        const codeText = m.code || "未辨識";
+        const personHtml = m.person
+          ? `<div class="month-line">人員：${escapeHtml(m.person)}</div>`
+          : "";
+
+        return `
+          <div class="month-card">
+            <div class="month-title ${statusClass}">● ${escapeHtml(titleText)}</div>
+            <div class="month-line">授權碼：</div>
+            <div class="month-val">${escapeHtml(codeText)}</div>
+            ${personHtml}
+            <div class="month-line">狀態：<span class="${statusClass}">${escapeHtml(statusText)}</span></div>
+          </div>
+        `;
+      }).join("");
+
+      content.innerHTML = `
+        <div class="detail-meta">共 ${records.length} 個查詢月份｜更新時間：${escapeHtml(item.updatedAt || "-")}</div>
+        <div class="month-grid">${cardsHtml}</div>
+      `;
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    document.querySelectorAll(".kpi").forEach(card => {
+      card.addEventListener("click", () => {
+        const nextFilter = card.dataset.filter || "all";
+        activeKpi = card.dataset.kpi || "buildings";
+        document.getElementById("statusFilter").value = nextFilter;
+        renderTable();
+        document.getElementById("listPanel").scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+
+    document.getElementById("searchInput").addEventListener("input", renderTable);
+    document.getElementById("statusFilter").addEventListener("change", () => {
+      const val = document.getElementById("statusFilter").value;
+      if (val === "all") activeKpi = "buildings";
+      renderTable();
+    });
+
+    loadDashboard();
+  </script>
+</body>
+</html>

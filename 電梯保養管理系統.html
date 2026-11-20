@@ -1,0 +1,1484 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>電梯保養管理系統</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & Noto Sans TC -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Inter"', '"Noto Sans TC"', 'sans-serif'],
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+      background-color: #f1f5f9;
+      color: #0f172a;
+    }
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-blue-600 selection:text-white">
+
+  <!-- Top Navigation Header -->
+  <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-30 border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between py-3.5 gap-3">
+        <!-- Company & Technician Info -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-inner shrink-0">
+            <i class="fa-solid fa-elevator text-lg text-white"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <h1 class="text-base sm:text-lg font-bold tracking-tight">電梯保養管理系統</h1>
+              <span class="px-2 py-0.5 text-xs font-semibold rounded-md bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                保六組 · 張懷恩
+              </span>
+            </div>
+            <p class="text-xs text-slate-400 mt-0.5">大業開發工業股份有限公司 · 自動同步與保養排程看板</p>
+          </div>
+        </div>
+
+        <!-- Controls: Reference Date, Month Switcher, Auto-Refresh Toggle, Sync & Export -->
+        <div class="flex items-center gap-2 flex-wrap">
+          <!-- Reference Date Input (Default: 2026-11-19) -->
+          <div class="inline-flex items-center gap-1.5 bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-1.5">
+            <label for="refDateInput" class="text-xs text-slate-300 font-medium">基準日：</label>
+            <input
+              type="date"
+              id="refDateInput"
+              value="2026-11-19"
+              onchange="handleRefDateChange()"
+              class="bg-slate-900 text-white text-xs font-mono font-bold rounded-lg px-2 py-1 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+            />
+          </div>
+
+          <!-- Month Selector (1~12) + Odd/Even Badge -->
+          <div class="inline-flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5">
+            <label for="monthSelect" class="text-xs text-slate-300 font-medium">目標月份：</label>
+            <select id="monthSelect" onchange="handleMonthChange()" class="bg-slate-900 text-white text-xs sm:text-sm font-bold rounded-lg px-2 py-1 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
+              <option value="1">1 月</option>
+              <option value="2">2 月</option>
+              <option value="3">3 月</option>
+              <option value="4">4 月</option>
+              <option value="5">5 月</option>
+              <option value="6">6 月</option>
+              <option value="7">7 月</option>
+              <option value="8">8 月</option>
+              <option value="9">9 月</option>
+              <option value="10">10 月</option>
+              <option value="11" selected>11 月</option>
+              <option value="12">12 月</option>
+            </select>
+            <span id="monthParityBadge" class="px-2 py-0.5 rounded-md text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              奇數月
+            </span>
+          </div>
+
+          <!-- Auto-Refresh Toggle (Default: Every 5 minutes) -->
+          <button
+            type="button"
+            id="autoRefreshToggleBtn"
+            onclick="toggleAutoRefresh()"
+            title="切換每 5 分鐘自動背景更新"
+            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium transition cursor-pointer"
+          >
+            <i id="autoRefreshIcon" class="fa-solid fa-clock-rotate-left text-emerald-400"></i>
+            <span id="autoRefreshLabel">定時更新：開 (5分)</span>
+          </button>
+
+          <!-- Manual Sync Now Button -->
+          <button
+            type="button"
+            onclick="syncFromGoogleSheet(false)"
+            class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-xs sm:text-sm font-medium transition shadow-sm cursor-pointer"
+          >
+            <i id="headerSyncIcon" class="fa-solid fa-rotate"></i>
+            <span>立即同步</span>
+          </button>
+
+          <!-- Connection Settings Modal Button -->
+          <button
+            type="button"
+            onclick="openSyncModal()"
+            class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs sm:text-sm font-medium transition cursor-pointer"
+          >
+            <i class="fa-solid fa-sliders"></i>
+            <span class="hidden sm:inline">連線設定</span>
+          </button>
+
+          <!-- Export CSV Button -->
+          <!-- <button
+            type="button"
+            onclick="exportCSV()"
+            class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs sm:text-sm font-medium transition cursor-pointer"
+          >
+            <i class="fa-solid fa-file-csv"></i>
+            <span class="hidden sm:inline">匯出 CSV</span>
+          </button> -->
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Data Source & Auto-Sync Status Banner -->
+  <div id="syncBanner" class="bg-blue-50 border-b border-blue-200 text-blue-900 px-4 py-2 text-xs sm:text-sm transition-colors">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+      <div class="flex items-center gap-2">
+        <span id="statusDot" class="w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse shrink-0"></span>
+        <span id="statusText">頁面載入完成，正在自動連線 Google 試算表同步最新資料...</span>
+      </div>
+      <div class="flex items-center gap-3 shrink-0">
+        <button type="button" onclick="syncFromGoogleSheet(false)" class="text-xs font-bold underline text-blue-800 hover:text-blue-600 cursor-pointer">
+          重新同步
+        </button>
+        <span id="logicHint" class="text-xs text-blue-700 font-medium hidden md:inline">
+          基準日 <span id="bannerRefDateText" class="font-mono font-bold">2026-11-19</span>：日期 &le; 基準日為「已保養」，日期 &gt; 基準日為「已排程」
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- Interactive KPI Cards -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+      <!-- Card 1: Master Table Total Units & Total Points -->
+      <button type="button" onclick="quickFilterFromCard('all')" class="text-left bg-white hover:bg-blue-50/40 rounded-2xl p-4 sm:p-5 border border-slate-200/80 hover:border-blue-300 shadow-sm transition cursor-pointer group">
+        <div class="flex items-center justify-between">
+          <span class="text-xs sm:text-sm font-bold text-slate-700">總表總台數 / 總點數</span>
+          <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center group-hover:scale-105 transition">
+            <i class="fa-solid fa-layer-group text-sm"></i>
+          </div>
+        </div>
+        <div class="mt-3 flex items-baseline justify-between gap-2">
+          <div class="flex items-baseline gap-1">
+            <span id="kpiMasterUnits" class="text-2xl sm:text-3xl font-bold text-blue-600 tabular-nums">0</span>
+            <span class="text-xs text-slate-500">台</span>
+          </div>
+          <div class="text-right">
+            <span id="kpiMasterPoints" class="text-lg sm:text-xl font-bold text-slate-900 tabular-nums">0.0</span>
+            <span class="text-xs text-slate-500">點</span>
+          </div>
+        </div>
+        <p class="mt-2 text-xs text-slate-500">
+          總表 <span id="kpiMasterRows" class="font-bold text-slate-700">0</span> 筆 · 每 <span id="countFreqEvery" class="font-bold text-slate-700">0</span> · 奇 <span id="countFreqOdd" class="font-bold text-slate-700">0</span> · 偶 <span id="countFreqEven" class="font-bold text-slate-700">0</span>
+        </p>
+      </button>
+
+      <!-- Card 2: Completed -->
+      <button type="button" onclick="quickFilterFromCard('completed')" class="text-left bg-white hover:bg-emerald-50/40 rounded-2xl p-4 sm:p-5 border border-slate-200/80 hover:border-emerald-300 shadow-sm transition cursor-pointer group">
+        <div class="flex items-center justify-between">
+          <span class="text-xs sm:text-sm font-bold text-emerald-700">已保養（&le;基準日）</span>
+          <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center group-hover:scale-105 transition">
+            <i class="fa-solid fa-circle-check text-sm"></i>
+          </div>
+        </div>
+        <div class="mt-3 flex items-baseline justify-between gap-2">
+          <div class="flex items-baseline gap-1">
+            <span id="kpiCompletedUnits" class="text-2xl sm:text-3xl font-bold text-emerald-600 tabular-nums">0</span>
+            <span class="text-xs text-slate-500">台</span>
+          </div>
+          <div class="text-right">
+            <span id="kpiCompletedPoints" class="text-base sm:text-lg font-bold text-emerald-700 tabular-nums">0.0</span>
+            <span class="text-xs text-slate-500">點</span>
+          </div>
+        </div>
+        <p class="mt-2 text-xs text-slate-500">
+          <span id="kpiCompletedCount" class="font-bold text-slate-700">0</span> 案已完工 · 點擊篩選
+        </p>
+      </button>
+
+      <!-- Card 3: Scheduled Future -->
+      <button type="button" onclick="quickFilterFromCard('scheduled')" class="text-left bg-white hover:bg-indigo-50/40 rounded-2xl p-4 sm:p-5 border border-slate-200/80 hover:border-indigo-300 shadow-sm transition cursor-pointer group">
+        <div class="flex items-center justify-between">
+          <span class="text-xs sm:text-sm font-bold text-indigo-700">已排程（&gt;基準日）</span>
+          <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center group-hover:scale-105 transition">
+            <i class="fa-solid fa-calendar-check text-sm"></i>
+          </div>
+        </div>
+        <div class="mt-3 flex items-baseline justify-between gap-2">
+          <div class="flex items-baseline gap-1">
+            <span id="kpiScheduledUnits" class="text-2xl sm:text-3xl font-bold text-indigo-600 tabular-nums">0</span>
+            <span class="text-xs text-slate-500">台</span>
+          </div>
+          <div class="text-right">
+            <span id="kpiScheduledPoints" class="text-base sm:text-lg font-bold text-indigo-700 tabular-nums">0.0</span>
+            <span class="text-xs text-slate-500">點</span>
+          </div>
+        </div>
+        <p class="mt-2 text-xs text-slate-500">
+          <span id="kpiScheduledCount" class="font-bold text-slate-700">0</span> 案未來排程 · 與已保養分開
+        </p>
+      </button>
+
+      <!-- Card 4: Due Unscheduled -->
+      <button type="button" onclick="quickFilterFromCard('due_unscheduled')" class="text-left bg-white hover:bg-rose-50/40 rounded-2xl p-4 sm:p-5 border-2 border-rose-200/90 shadow-sm transition cursor-pointer group">
+        <div class="flex items-center justify-between">
+          <span class="text-xs sm:text-sm font-bold text-rose-700">尚未保養（當月應保）</span>
+          <div class="w-8 h-8 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center group-hover:scale-105 transition">
+            <i class="fa-solid fa-triangle-exclamation text-sm"></i>
+          </div>
+        </div>
+        <div class="mt-3 flex items-baseline justify-between gap-2">
+          <div class="flex items-baseline gap-1">
+            <span id="kpiDueUnscheduledUnits" class="text-2xl sm:text-3xl font-bold text-rose-600 tabular-nums">0</span>
+            <span class="text-xs text-slate-500">台</span>
+          </div>
+          <div class="text-right">
+            <span id="kpiDueUnscheduledPoints" class="text-base sm:text-lg font-bold text-rose-700 tabular-nums">0.0</span>
+            <span class="text-xs text-slate-500">點</span>
+          </div>
+        </div>
+        <p class="mt-2 text-xs text-rose-600/90 font-medium">
+          <span id="kpiDueUnscheduledCount" class="font-bold">0</span> 案未排（非本月 <span id="kpiOffCycleCount" class="font-bold text-slate-700">0</span> 案）
+        </p>
+      </button>
+    </section>
+
+    <!-- Main Tab Navigation -->
+    <nav class="bg-white p-1.5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-wrap gap-1.5">
+      <button type="button" onclick="switchTab('list')" id="tab-list" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition bg-slate-900 text-white shadow-sm cursor-pointer">
+        <i class="fa-solid fa-list-check"></i>
+        <span>總表與保養明細</span>
+      </button>
+      <button type="button" onclick="switchTab('calendar')" id="tab-calendar" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition text-slate-600 hover:bg-slate-100 cursor-pointer">
+        <i class="fa-solid fa-calendar-days"></i>
+        <span>動態月曆 & 週報表</span>
+      </button>
+    </nav>
+
+    <!-- TAB 1: MAINTENANCE LIST & STATUS -->
+    <section id="view-list" class="space-y-4">
+      <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm space-y-3">
+        <div class="flex flex-col md:flex-row gap-3">
+          <div class="relative flex-1">
+            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+            <input
+              type="text"
+              id="searchInput"
+              oninput="renderListView()"
+              placeholder="搜尋案名、服務編號、聯絡人、電話、預約或備註..."
+              class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+            />
+          </div>
+          <div class="flex items-center gap-2">
+            <label for="freqFilterSelect" class="text-xs font-semibold text-slate-600 shrink-0">次數週期：</label>
+            <select id="freqFilterSelect" onchange="renderListView()" class="px-3 py-2.5 rounded-xl border border-slate-300 text-sm font-medium bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
+              <option value="all">全部次數 (每/奇/偶)</option>
+              <option value="每">每（每月應保）</option>
+              <option value="奇">奇（奇數月保養）</option>
+              <option value="偶">偶（偶數月保養）</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Status Filter Pills -->
+        <div class="flex items-center gap-2 overflow-x-auto pb-1">
+          <span class="text-xs font-medium text-slate-400 shrink-0">狀態篩選：</span>
+          <button type="button" onclick="setStatusFilter('all')" data-status="all" class="status-pill px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 text-white transition shrink-0 cursor-pointer">全部</button>
+          <button type="button" onclick="setStatusFilter('completed')" data-status="completed" class="status-pill px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition shrink-0 cursor-pointer">已保養 (&le;基準日)</button>
+          <button type="button" onclick="setStatusFilter('scheduled')" data-status="scheduled" class="status-pill px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition shrink-0 cursor-pointer">已排程 (&gt;基準日)</button>
+          <button type="button" onclick="setStatusFilter('due_unscheduled')" data-status="due_unscheduled" class="status-pill px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition shrink-0 cursor-pointer">尚未保養</button>
+          <button type="button" onclick="setStatusFilter('off_cycle')" data-status="off_cycle" class="status-pill px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition shrink-0 cursor-pointer">非本月週期</button>
+        </div>
+      </div>
+
+      <!-- Desktop Table -->
+      <div class="hidden md:block bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                <th class="py-3.5 px-4">案名 / 服務編號</th>
+                <th class="py-3.5 px-4">聯絡人 / 電話</th>
+                <th class="py-3.5 px-4 text-center">次數</th>
+                <th class="py-3.5 px-4 text-center">保養/排程日期</th>
+                <th class="py-3.5 px-4 text-center">台數 / 點數</th>
+                <th class="py-3.5 px-4">判定狀態</th>
+                <th class="py-3.5 px-4">預約 / 備註</th>
+                <th class="py-3.5 px-4 text-right">編輯</th>
+              </tr>
+            </thead>
+            <tbody id="listTableBody" class="divide-y divide-slate-100 text-sm"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Mobile Cards -->
+      <div id="listMobileCards" class="md:hidden space-y-3"></div>
+
+      <!-- Empty State -->
+      <div id="listEmptyState" class="hidden bg-white rounded-2xl p-10 text-center border border-slate-200">
+        <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
+          <i class="fa-solid fa-magnifying-glass text-xl"></i>
+        </div>
+        <h3 class="text-base font-semibold text-slate-800">沒有符合目前條件的案名</h3>
+        <p class="text-xs text-slate-500 mt-1">可嘗試切換月份、重設篩選條件或搜尋其他關鍵字</p>
+      </div>
+    </section>
+
+    <!-- TAB 2: CALENDAR & WEEKLY REPORT -->
+    <section id="view-calendar" class="hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 bg-white rounded-2xl p-4 sm:p-6 border border-slate-200/80 shadow-sm">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+            <div>
+              <h2 id="calendarHeaderTitle" class="text-lg font-bold text-slate-900">2026 年 11 月 保養動態月曆</h2>
+              <p class="text-xs text-slate-500">點擊日期查看當日排程/完工案名，右側同步產生週報表</p>
+            </div>
+            <div class="flex items-center gap-3 text-xs">
+              <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>已填寫日期</span>
+              <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>基準日</span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-slate-500 pb-2 border-b border-slate-100">
+            <div class="text-rose-500">日</div>
+            <div>一</div>
+            <div>二</div>
+            <div>三</div>
+            <div>四</div>
+            <div>五</div>
+            <div class="text-blue-600">六</div>
+          </div>
+
+          <div id="calendarGrid" class="grid grid-cols-7 gap-1.5 mt-2"></div>
+        </div>
+
+        <div class="space-y-6">
+          <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-sm">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
+              <div>
+                <span class="text-xs font-semibold text-blue-600">選定日期明細</span>
+                <h3 id="selectedDayTitle" class="text-base font-bold text-slate-900">2026/11/19 (週四)</h3>
+              </div>
+              <span id="selectedDayBadge" class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold tabular-nums">0 案</span>
+            </div>
+            <div id="selectedDayList" class="space-y-2 max-h-64 overflow-y-auto pr-1"></div>
+          </div>
+
+          <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-sm">
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <h3 class="text-base font-bold text-slate-900">週報表快速產生器</h3>
+                <p class="text-xs text-slate-500">一鍵複製回報文字</p>
+              </div>
+              <button type="button" onclick="copyWeeklyReportText()" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition cursor-pointer">
+                <i class="fa-regular fa-copy mr-1"></i>一鍵複製
+              </button>
+            </div>
+
+            <div class="flex gap-1.5 mb-3 overflow-x-auto pb-1">
+              <button type="button" onclick="selectWeek(1)" data-week="1" class="week-tab px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 cursor-pointer">第1週 (1~7)</button>
+              <button type="button" onclick="selectWeek(2)" data-week="2" class="week-tab px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 cursor-pointer">第2週 (8~14)</button>
+              <button type="button" onclick="selectWeek(3)" data-week="3" class="week-tab px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-600 text-white cursor-pointer">第3週 (15~21)</button>
+              <button type="button" onclick="selectWeek(4)" data-week="4" class="week-tab px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 cursor-pointer">第4週 (22~31)</button>
+            </div>
+
+            <pre id="weeklyReportOutput" class="bg-slate-50 rounded-xl p-3 border border-slate-200 text-xs text-slate-700 font-mono whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto"></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-slate-200 py-4 mt-10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
+      <span>大業開發工業股份有限公司 · 保六組（張懷恩）</span>
+      <span id="lastSyncTimestamp">尚未完成雲端同步</span>
+    </div>
+  </footer>
+
+  <!-- MODAL 1: GOOGLE SHEETS CONNECTION SETTINGS -->
+  <div id="syncModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 overflow-hidden">
+      <div class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <i class="fa-solid fa-table text-emerald-400 text-lg"></i>
+          <h3 class="font-bold text-base">Google 試算表同步設定</h3>
+        </div>
+        <button type="button" onclick="closeSyncModal()" class="text-slate-400 hover:text-white transition cursor-pointer">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4 max-h-[82vh] overflow-y-auto">
+        <div>
+          <label for="sheetUrlOrId" class="block text-xs font-bold text-slate-700 mb-1.5">Google 試算表 ID 或完整網址</label>
+          <input
+            type="text"
+            id="sheetUrlOrId"
+            value="14S_KWvc1y8N6IkNwQJy7fOo8KwPbRFwg_pQYK6dTXAc"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label for="tabNameDates" class="block text-xs font-bold text-slate-700 mb-1.5">主分頁名稱 (A1:E140)</label>
+            <input
+              type="text"
+              id="tabNameDates"
+              value="案名與保養日期"
+              class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label for="tabNameMaster" class="block text-xs font-bold text-slate-700 mb-1.5">輔助比對分頁 (A1:Q137)</label>
+            <input
+              type="text"
+              id="tabNameMaster"
+              value="總表"
+              class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-xs text-amber-900 space-y-1">
+          <div class="font-bold flex items-center gap-1.5">
+            <i class="fa-solid fa-circle-info text-amber-600"></i>
+            <span>自動同步說明：</span>
+          </div>
+          <p>網頁開啟時會自動抓取試算表資料，並比對「總表」J/K/L 欄聯絡人與電話。請確認試算表共用權限為<strong>「知道連結的任何人（檢視者）」</strong>。</p>
+        </div>
+
+        <div id="syncAlertBox" class="hidden rounded-xl p-3 text-xs"></div>
+
+        <div class="flex flex-col sm:flex-row gap-2.5 pt-2">
+          <button type="button" onclick="syncFromGoogleSheet(false)" id="btnSyncNow" class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold transition cursor-pointer">
+            <i class="fa-solid fa-cloud-arrow-down"></i>
+            <span>立即同步最新資料</span>
+          </button>
+          <button type="button" onclick="restoreSampleData()" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold transition cursor-pointer">
+            <i class="fa-solid fa-rotate-left"></i>
+            <span>還原內建範例</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: EDIT EXISTING CASE DETAIL -->
+  <div id="detailModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden">
+      <div class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+        <h3 id="detailModalTitle" class="font-bold text-base">編輯案名保養資料</h3>
+        <button type="button" onclick="closeDetailModal()" class="text-slate-400 hover:text-white transition cursor-pointer">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <form id="detailForm" onsubmit="handleSaveDetail(event)" class="p-6 space-y-3.5 max-h-[82vh] overflow-y-auto">
+        <input type="hidden" id="formRecordId" />
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="sm:col-span-2">
+            <label for="formName" class="block text-xs font-bold text-slate-700 mb-1">A 案名 / 大樓名稱</label>
+            <input type="text" id="formName" readonly class="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 text-sm focus:outline-none" />
+          </div>
+
+          <div>
+            <label for="formContactName" class="block text-xs font-bold text-slate-700 mb-1">聯絡人姓名 (總表 J 欄)</label>
+            <input type="text" id="formContactName" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="聯絡人姓名" />
+          </div>
+
+          <div>
+            <label for="formContactPhone" class="block text-xs font-bold text-slate-700 mb-1">聯絡電話 (總表 K 欄)</label>
+            <input type="text" id="formContactPhone" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="手機或市話" />
+          </div>
+
+          <div>
+            <label for="formHomePhone" class="block text-xs font-bold text-slate-700 mb-1">家電 / 備用電話 (總表 L 欄)</label>
+            <input type="text" id="formHomePhone" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="市話 / 家電" />
+          </div>
+
+          <div>
+            <label for="formFreq" class="block text-xs font-bold text-slate-700 mb-1">D 次數 (保養週期)</label>
+            <select id="formFreq" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              <option value="每">每（每月應保養）</option>
+              <option value="奇">奇（奇數月 1,3,5,7,9,11）</option>
+              <option value="偶">偶（偶數月 2,4,6,8,10,12）</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="formDate" class="block text-xs font-bold text-slate-700 mb-1">C 欄日期 (填日數或月/日，空白/X為未排)</label>
+            <input type="text" id="formDate" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="例如：11/19 或 19 或留空" />
+          </div>
+
+          <div>
+            <label for="formAppointment" class="block text-xs font-bold text-slate-700 mb-1">B 預約項目</label>
+            <input type="text" id="formAppointment" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="例如：11/24 上午預約" />
+          </div>
+
+          <div class="sm:col-span-2">
+            <label for="formUnscheduledNote" class="block text-xs font-bold text-slate-700 mb-1">E 尚未保養備註 / 現場資訊</label>
+            <input type="text" id="formUnscheduledNote" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="例如：待管委會通知" />
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2.5 pt-3 border-t border-slate-100">
+          <button type="button" onclick="closeDetailModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold transition cursor-pointer">取消</button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition cursor-pointer">儲存變更</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-5 right-5 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl text-sm font-medium flex items-center gap-2.5 transform translate-y-20 opacity-0 transition-all duration-300 z-50">
+    <i class="fa-solid fa-circle-check text-emerald-400"></i>
+    <span id="toastMessage">已完成操作</span>
+  </div>
+
+  <script>
+    // =========================================================================
+    // 1. INITIAL SAMPLE / CACHE DATASET
+    // =========================================================================
+    const INITIAL_RECORDS = [
+      { id: 1, name: "盧春絹（科博一品B）", appointment: "", date: "", freq: "偶", unscheduledNote: "", serviceId: "100410806", units: 1, points: 4.0, contactName: "盧阿姨", contactPhone: "04-23022909", homePhone: "", address: "西區梅川西路一段136號", fromMaster: true },
+      { id: 2, name: "羅文亮（科博一品D）", appointment: "", date: "", freq: "偶", unscheduledNote: "", serviceId: "100411006", units: 1, points: 4.0, contactName: "羅文亮", contactPhone: "0928-651581", homePhone: "04-23016428", address: "西區梅川西路一段133號", fromMaster: true },
+      { id: 3, name: "銾錩國際（大日臻築S）", appointment: "", date: "6", freq: "每", unscheduledNote: "", serviceId: "100421505", units: 1, points: 5.8, contactName: "洪小姐", contactPhone: "0972-216669", homePhone: "", address: "南區高工南路8號10號", fromMaster: true },
+      { id: 4, name: "廖妍筠（臻築C2棟）", appointment: "", date: "", freq: "偶", unscheduledNote: "", serviceId: "100421606", units: 1, points: 4.0, contactName: "廖研荷", contactPhone: "0986-138589", homePhone: "04-22651555", address: "南區高工一街12巷2號", fromMaster: true },
+      { id: 5, name: "徐千惠（臻築D1棟）", appointment: "", date: "18", freq: "奇", unscheduledNote: "", serviceId: "100421805", units: 1, points: 4.0, contactName: "徐千惠", contactPhone: "0922-346535", homePhone: "", address: "南區高工一街6號", fromMaster: true },
+      { id: 6, name: "蔡月英（科博一品二期B）", appointment: "", date: "", freq: "偶", unscheduledNote: "", serviceId: "100422106", units: 1, points: 4.0, contactName: "蔡月英", contactPhone: "0933-450205", homePhone: "", address: "西區梅川西路一段131號", fromMaster: true }
+    ];
+
+    // =========================================================================
+    // 2. STATE MANAGEMENT
+    // =========================================================================
+    const STORAGE_KEY = "dayeh_elevator_records_v3";
+    let records = [];
+    let currentStatusFilter = "all";
+    let selectedCalendarDay = 19;
+    let selectedWeek = 3;
+    let autoRefreshEnabled = true;
+    let autoRefreshTimer = null;
+
+    // =========================================================================
+    // 3. DATE & STATUS EVALUATION HELPERS
+    // =========================================================================
+    function getTargetMonth() {
+      return parseInt(document.getElementById("monthSelect").value, 10) || 11;
+    }
+
+    function getReferenceDateObj() {
+      const val = document.getElementById("refDateInput").value || "2026-11-19";
+      const [y, m, d] = val.split("-").map(Number);
+      return { year: y || 2026, month: m || 11, day: d || 19, raw: val };
+    }
+
+    // 解析 C 欄日期：支援 "6" -> 11/6, "18" -> 11/18, "11/6" -> 11/6, "2026/11/6" -> 11/6
+    function parseMaintenanceDate(rawDate, targetMonth) {
+      if (rawDate === null || rawDate === undefined) return null;
+      const str = String(rawDate).trim();
+      if (!str || str.toUpperCase() === "X" || str === "-" || str === "無") return null;
+
+      // 1) 純數字 (例如 "6", "18") -> 視為目標月份的該日
+      if (/^\d{1,2}$/.test(str)) {
+        const day = parseInt(str, 10);
+        if (day >= 1 && day <= 31) {
+          return {
+            month: targetMonth,
+            day: day,
+            display: `${targetMonth}/${day}`
+          };
+        }
+        return null;
+      }
+
+      // 2) M/D 或 M-D 格式 (例如 "11/6", "11-18")
+      const mdMatch = str.match(/^(\d{1,2})[\/\-](\d{1,2})$/);
+      if (mdMatch) {
+        const m = parseInt(mdMatch[1], 10);
+        const d = parseInt(mdMatch[2], 10);
+        if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+          return {
+            month: m,
+            day: d,
+            display: `${m}/${d}`
+          };
+        }
+      }
+
+      // 3) YYYY/M/D 或 YYYY-M-D
+      const ymdMatch = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+      if (ymdMatch) {
+        const m = parseInt(ymdMatch[2], 10);
+        const d = parseInt(ymdMatch[3], 10);
+        return {
+          month: m,
+          day: d,
+          display: `${m}/${d}`
+        };
+      }
+
+      return null;
+    }
+
+    function isDueInMonth(freq, month) {
+      const f = (freq || "").trim();
+      if (f === "每") return true;
+      if (f === "奇") return month % 2 === 1;
+      if (f === "偶") return month % 2 === 0;
+      return true;
+    }
+
+    function evaluateRecord(rec) {
+      const targetMonth = getTargetMonth();
+      const ref = getReferenceDateObj();
+      const parsedDate = parseMaintenanceDate(rec.date, targetMonth);
+      const dueThisMonth = isDueInMonth(rec.freq, targetMonth);
+
+      if (parsedDate) {
+        const refComparable = ref.month * 100 + ref.day;
+        const recComparable = parsedDate.month * 100 + parsedDate.day;
+        if (recComparable <= refComparable) {
+          return {
+            status: "completed",
+            label: "已保養",
+            dateDisplay: parsedDate.display,
+            parsedDate
+          };
+        } else {
+          return {
+            status: "scheduled",
+            label: "已排程",
+            dateDisplay: parsedDate.display,
+            parsedDate
+          };
+        }
+      }
+
+      if (dueThisMonth) {
+        return {
+          status: "due_unscheduled",
+          label: "尚未保養",
+          dateDisplay: rec.date && rec.date.trim() ? rec.date.trim() : "未排程",
+          parsedDate: null
+        };
+      }
+
+      return {
+        status: "off_cycle",
+        label: "非本月週期",
+        dateDisplay: rec.date && rec.date.trim() ? rec.date.trim() : "—",
+        parsedDate: null
+      };
+    }
+
+    // =========================================================================
+    // 4. GOOGLE SHEETS SYNC ENGINE (雙分頁自動合併 + 聯絡人與電話對應)
+    // =========================================================================
+    function extractSheetId(input) {
+      const trimmed = (input || "").trim();
+      const match = trimmed.match(/\/d\/([a-zA-Z0-9-_]+)/);
+      return match ? match[1] : trimmed;
+    }
+
+    function fetchSheetTabViaGviz(sheetId, sheetName) {
+      return new Promise((resolve, reject) => {
+        const cbName = "gvizCb_" + Math.random().toString(36).substring(2, 10);
+        const url = `https://docs.google.com/spreadsheets/d/${encodeURIComponent(sheetId)}/gviz/tq?tqx=out:json;responseHandler:${cbName}&sheet=${encodeURIComponent(sheetName)}`;
+
+        const timeout = setTimeout(() => {
+          cleanup();
+          reject(new Error(`讀取分頁「${sheetName}」逾時，請確認試算表共用權限為「知道連結的任何人」。`));
+        }, 12000);
+
+        function cleanup() {
+          clearTimeout(timeout);
+          delete window[cbName];
+          if (script && script.parentNode) script.parentNode.removeChild(script);
+        }
+
+        window[cbName] = function (response) {
+          cleanup();
+          if (!response || response.status === "error") {
+            const msg = response?.errors?.[0]?.detailed_message || `無法讀取分頁「${sheetName}」`;
+            reject(new Error(msg));
+            return;
+          }
+          const table = response.table;
+          const rows = (table.rows || []).map(r =>
+            (r.c || []).map(cell => {
+              if (!cell) return "";
+              // 優先使用 formatted value (f)，若無則使用 value (v)
+              if (cell.f !== undefined && cell.f !== null) return String(cell.f).trim();
+              if (cell.v !== undefined && cell.v !== null) return String(cell.v).trim();
+              return "";
+            })
+          );
+          resolve(rows);
+        };
+
+        const script = document.createElement("script");
+        script.src = url;
+        script.onerror = () => {
+          cleanup();
+          reject(new Error(`連線 Google 試算表失敗（分頁：${sheetName}），請檢查網路或網址。`));
+        };
+        document.head.appendChild(script);
+      });
+    }
+
+    function normalizeBuildingKey(name) {
+      return (name || "")
+        .replace(/\s+/g, "")
+        .replace(/（/g, "(")
+        .replace(/）/g, ")")
+        .trim();
+    }
+
+    async function syncFromGoogleSheet(silent = false) {
+      const sheetId = extractSheetId(document.getElementById("sheetUrlOrId").value);
+      const tabDates = document.getElementById("tabNameDates").value.trim() || "案名與保養日期";
+      const tabMaster = document.getElementById("tabNameMaster").value.trim() || "總表";
+
+      const headerIcon = document.getElementById("headerSyncIcon");
+      const statusDot = document.getElementById("statusDot");
+      const statusText = document.getElementById("statusText");
+      const alertBox = document.getElementById("syncAlertBox");
+
+      headerIcon.classList.add("fa-spin");
+      statusDot.className = "w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse shrink-0";
+      statusText.textContent = `正在同步「${tabDates}」與「${tabMaster}」...`;
+
+      try {
+        const [dateRows, masterRows] = await Promise.all([
+          fetchSheetTabViaGviz(sheetId, tabDates),
+          fetchSheetTabViaGviz(sheetId, tabMaster).catch(() => [])
+        ]);
+
+        // 建立「總表」查找表 (A:大樓名稱, B:服務編號, C:停數, F:點數, G:保養, H:日期, J:聯絡人姓名, K:聯絡電話, L:家電, M:地址, Q:現場資訊)
+        const masterMap = new Map();
+        masterRows.forEach((row, idx) => {
+          const bName = (row[0] || "").trim();
+          if (!bName || bName === "大樓名稱" || bName.includes("合計")) return;
+
+          const key = normalizeBuildingKey(bName);
+          const item = {
+            name: bName,
+            serviceId: (row[1] || "").trim(),
+            stops: (row[2] || "").trim(),
+            points: parseFloat(row[5]) || 0,
+            freq: (row[6] || "").trim(),
+            masterDate: (row[7] || "").trim(),
+            contactName: (row[9] || "").trim(),
+            contactPhone: (row[10] || "").trim(),
+            homePhone: (row[11] || "").trim(),
+            address: (row[12] || "").trim(),
+            siteNote: (row[16] || "").trim(),
+            used: false
+          };
+
+          if (!masterMap.has(key)) {
+            masterMap.set(key, []);
+          }
+          masterMap.get(key).push(item);
+        });
+
+        const merged = [];
+        let idCounter = 1;
+
+        // 解析主分頁「案名與保養日期」 (A:大樓名稱, B:預約項目, C:日期, D:保養, E:尚未保養備註)
+        dateRows.forEach((row) => {
+          const bName = (row[0] || "").trim();
+          if (!bName || bName === "大樓名稱" || bName.includes("合計") || bName.includes("總計")) return;
+
+          const key = normalizeBuildingKey(bName);
+          const candidates = masterMap.get(key) || [];
+          const masterMatch = candidates.find(c => !c.used) || candidates[0] || null;
+          if (masterMatch) masterMatch.used = true;
+
+          const rawDate = (row[2] || "").trim();
+          const fallbackDate = masterMatch && masterMatch.masterDate && masterMatch.masterDate.toUpperCase() !== "X"
+            ? masterMatch.masterDate
+            : "";
+
+          merged.push({
+            id: idCounter++,
+            name: bName,
+            appointment: (row[1] || "").trim(),
+            date: rawDate || fallbackDate,
+            freq: (row[3] || masterMatch?.freq || "每").trim(),
+            unscheduledNote: (row[4] || "").trim() || (masterMatch?.siteNote || ""),
+            serviceId: masterMatch?.serviceId || "",
+            units: 1,
+            points: masterMatch?.points || 0,
+            contactName: masterMatch?.contactName || "",
+            contactPhone: masterMatch?.contactPhone || "",
+            homePhone: masterMatch?.homePhone || "",
+            address: masterMatch?.address || "",
+            fromMaster: Boolean(masterMatch)
+          });
+        });
+
+        // 若總表中有「案名與保養日期」未列出的項目，一併補入確保台數與點數完整
+        masterMap.forEach((list) => {
+          list.forEach((mItem) => {
+            if (!mItem.used) {
+              merged.push({
+                id: idCounter++,
+                name: mItem.name,
+                appointment: "",
+                date: mItem.masterDate.toUpperCase() === "X" ? "" : mItem.masterDate,
+                freq: mItem.freq || "每",
+                unscheduledNote: mItem.siteNote || "",
+                serviceId: mItem.serviceId,
+                units: 1,
+                points: mItem.points,
+                contactName: mItem.contactName,
+                contactPhone: mItem.contactPhone,
+                homePhone: mItem.homePhone,
+                address: mItem.address,
+                fromMaster: true
+              });
+            }
+          });
+        });
+
+        if (merged.length > 0) {
+          records = merged;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+        }
+
+        const nowStr = new Date().toLocaleTimeString("zh-TW", { hour12: false });
+        statusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0";
+        statusText.textContent = `已連線 Google 試算表 · 共載入 ${records.length} 筆案場（含聯絡人與電話）`;
+        document.getElementById("lastSyncTimestamp").textContent = `最後雲端同步時間：${nowStr}`;
+
+        if (alertBox) {
+          alertBox.className = "rounded-xl p-3 text-xs bg-emerald-50 border border-emerald-200 text-emerald-800";
+          alertBox.textContent = `同步成功！已整合「${tabDates}」與「${tabMaster}」共 ${records.length} 筆資料（${nowStr}）。`;
+          alertBox.classList.remove("hidden");
+        }
+
+        refreshAllViews();
+        if (!silent) showToast(`已同步最新試算表資料（${records.length} 筆）`);
+      } catch (err) {
+        statusDot.className = "w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0";
+        statusText.textContent = `雲端同步失敗（顯示本機快取資料）：${err.message}`;
+        if (alertBox) {
+          alertBox.className = "rounded-xl p-3 text-xs bg-rose-50 border border-rose-200 text-rose-800";
+          alertBox.textContent = err.message;
+          alertBox.classList.remove("hidden");
+        }
+        refreshAllViews();
+      } finally {
+        headerIcon.classList.remove("fa-spin");
+      }
+    }
+
+    // =========================================================================
+    // 5. RENDERING: KPI, TABLE, MOBILE CARDS, CALENDAR & WEEKLY REPORT
+    // =========================================================================
+    function refreshAllViews() {
+      updateHeaderBadges();
+      renderKPIs();
+      renderListView();
+      renderCalendar();
+      renderWeeklyReport();
+    }
+
+    function updateHeaderBadges() {
+      const m = getTargetMonth();
+      const badge = document.getElementById("monthParityBadge");
+      if (m % 2 === 1) {
+        badge.textContent = "奇數月";
+        badge.className = "px-2 py-0.5 rounded-md text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30";
+      } else {
+        badge.textContent = "偶數月";
+        badge.className = "px-2 py-0.5 rounded-md text-xs font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30";
+      }
+
+      const refVal = document.getElementById("refDateInput").value || "2026-11-19";
+      document.getElementById("bannerRefDateText").textContent = refVal;
+      document.getElementById("calendarHeaderTitle").textContent = `2026 年 ${m} 月 保養動態月曆`;
+    }
+
+    function renderKPIs() {
+      let totalUnits = 0, totalPoints = 0;
+      let freqEvery = 0, freqOdd = 0, freqEven = 0;
+      let compUnits = 0, compPoints = 0, compCount = 0;
+      let schedUnits = 0, schedPoints = 0, schedCount = 0;
+      let dueUnits = 0, duePoints = 0, dueCount = 0;
+      let offCount = 0;
+
+      records.forEach(rec => {
+        const u = Number(rec.units) || 1;
+        const p = Number(rec.points) || 0;
+        totalUnits += u;
+        totalPoints += p;
+
+        if (rec.freq === "每") freqEvery++;
+        else if (rec.freq === "奇") freqOdd++;
+        else if (rec.freq === "偶") freqEven++;
+
+        const ev = evaluateRecord(rec);
+        if (ev.status === "completed") {
+          compUnits += u; compPoints += p; compCount++;
+        } else if (ev.status === "scheduled") {
+          schedUnits += u; schedPoints += p; schedCount++;
+        } else if (ev.status === "due_unscheduled") {
+          dueUnits += u; duePoints += p; dueCount++;
+        } else {
+          offCount++;
+        }
+      });
+
+      document.getElementById("kpiMasterUnits").textContent = totalUnits;
+      document.getElementById("kpiMasterPoints").textContent = totalPoints.toFixed(1);
+      document.getElementById("kpiMasterRows").textContent = records.length;
+      document.getElementById("countFreqEvery").textContent = freqEvery;
+      document.getElementById("countFreqOdd").textContent = freqOdd;
+      document.getElementById("countFreqEven").textContent = freqEven;
+
+      document.getElementById("kpiCompletedUnits").textContent = compUnits;
+      document.getElementById("kpiCompletedPoints").textContent = compPoints.toFixed(1);
+      document.getElementById("kpiCompletedCount").textContent = compCount;
+
+      document.getElementById("kpiScheduledUnits").textContent = schedUnits;
+      document.getElementById("kpiScheduledPoints").textContent = schedPoints.toFixed(1);
+      document.getElementById("kpiScheduledCount").textContent = schedCount;
+
+      document.getElementById("kpiDueUnscheduledUnits").textContent = dueUnits;
+      document.getElementById("kpiDueUnscheduledPoints").textContent = duePoints.toFixed(1);
+      document.getElementById("kpiDueUnscheduledCount").textContent = dueCount;
+      document.getElementById("kpiOffCycleCount").textContent = offCount;
+    }
+
+    function escapeHtml(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function formatContactHtml(rec) {
+      const cName = escapeHtml(rec.contactName);
+      const cPhone = escapeHtml(rec.contactPhone);
+      const hPhone = escapeHtml(rec.homePhone);
+
+      if (!cName && !cPhone && !hPhone) {
+        return `<span class="text-slate-400 text-xs">—</span>`;
+      }
+
+      let html = `<div class="space-y-0.5">`;
+      if (cName) {
+        html += `<div class="font-semibold text-slate-800 text-xs sm:text-sm"><i class="fa-regular fa-user text-slate-400 mr-1 text-xs"></i>${cName}</div>`;
+      }
+      if (cPhone) {
+        html += `<div><a href="tel:${cPhone.replace(/[^0-9+]/g, "")}" class="inline-flex items-center gap-1 text-xs font-mono text-blue-600 hover:text-blue-800 hover:underline"><i class="fa-solid fa-phone text-[10px]"></i>${cPhone}</a></div>`;
+      }
+      if (hPhone) {
+        html += `<div><a href="tel:${hPhone.replace(/[^0-9+]/g, "")}" class="inline-flex items-center gap-1 text-xs font-mono text-slate-500 hover:text-slate-800 hover:underline"><i class="fa-solid fa-phone-volume text-[10px]"></i>${hPhone}</a></div>`;
+      }
+      html += `</div>`;
+      return html;
+    }
+
+    function getStatusBadgeHtml(ev) {
+      if (ev.status === "completed") {
+        return `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800"><i class="fa-solid fa-check"></i>已保養</span>`;
+      }
+      if (ev.status === "scheduled") {
+        return `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800"><i class="fa-regular fa-calendar"></i>已排程</span>`;
+      }
+      if (ev.status === "due_unscheduled") {
+        return `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800"><i class="fa-solid fa-clock"></i>尚未保養</span>`;
+      }
+      return `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-500">非本月週期</span>`;
+    }
+
+    function getFreqBadgeHtml(freq) {
+      if (freq === "每") return `<span class="px-2 py-0.5 rounded-md text-xs font-bold bg-blue-100 text-blue-800">每</span>`;
+      if (freq === "奇") return `<span class="px-2 py-0.5 rounded-md text-xs font-bold bg-amber-100 text-amber-800">奇</span>`;
+      if (freq === "偶") return `<span class="px-2 py-0.5 rounded-md text-xs font-bold bg-purple-100 text-purple-800">偶</span>`;
+      return `<span class="px-2 py-0.5 rounded-md text-xs font-bold bg-slate-100 text-slate-700">${escapeHtml(freq)}</span>`;
+    }
+
+    function renderListView() {
+      const keyword = (document.getElementById("searchInput").value || "").trim().toLowerCase();
+      const freqFilter = document.getElementById("freqFilterSelect").value;
+
+      const filtered = records.filter(rec => {
+        const ev = evaluateRecord(rec);
+        if (currentStatusFilter !== "all" && ev.status !== currentStatusFilter) return false;
+        if (freqFilter !== "all" && rec.freq !== freqFilter) return false;
+
+        if (keyword) {
+          const hay = [
+            rec.name,
+            rec.serviceId,
+            rec.contactName,
+            rec.contactPhone,
+            rec.homePhone,
+            rec.appointment,
+            rec.unscheduledNote,
+            rec.address
+          ].join(" ").toLowerCase();
+          if (!hay.includes(keyword)) return false;
+        }
+        return true;
+      });
+
+      const tbody = document.getElementById("listTableBody");
+      const mobileContainer = document.getElementById("listMobileCards");
+      const emptyState = document.getElementById("listEmptyState");
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = "";
+        mobileContainer.innerHTML = "";
+        emptyState.classList.remove("hidden");
+        return;
+      }
+      emptyState.classList.add("hidden");
+
+      // Desktop rows
+      tbody.innerHTML = filtered.map(rec => {
+        const ev = evaluateRecord(rec);
+        const notes = [rec.appointment, rec.unscheduledNote].filter(Boolean).join(" · ") || "—";
+        return `
+          <tr class="hover:bg-slate-50/90 transition">
+            <td class="py-3.5 px-4">
+              <div class="font-bold text-slate-900">${escapeHtml(rec.name)}</div>
+              <div class="text-xs text-slate-400 font-mono mt-0.5">${rec.serviceId ? `編號 ${escapeHtml(rec.serviceId)}` : "無服務編號"}</div>
+            </td>
+            <td class="py-3.5 px-4">
+              ${formatContactHtml(rec)}
+            </td>
+            <td class="py-3.5 px-4 text-center">
+              ${getFreqBadgeHtml(rec.freq)}
+            </td>
+            <td class="py-3.5 px-4 text-center font-mono font-bold text-slate-800 tabular-nums">
+              ${escapeHtml(ev.dateDisplay)}
+            </td>
+            <td class="py-3.5 px-4 text-center text-xs text-slate-600 tabular-nums">
+              <span class="font-bold text-slate-800">${rec.units}台</span> (${Number(rec.points).toFixed(1)}點)
+            </td>
+            <td class="py-3.5 px-4">
+              ${getStatusBadgeHtml(ev)}
+            </td>
+            <td class="py-3.5 px-4 text-xs text-slate-600 max-w-xs">
+              ${escapeHtml(notes)}
+            </td>
+            <td class="py-3.5 px-4 text-right">
+              <button type="button" onclick="openDetailModal(${rec.id})" class="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-blue-100 text-slate-600 hover:text-blue-700 text-xs font-semibold transition cursor-pointer">
+                <i class="fa-solid fa-pen-to-square"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join("");
+
+      // Mobile cards
+      mobileContainer.innerHTML = filtered.map(rec => {
+        const ev = evaluateRecord(rec);
+        const notes = [rec.appointment, rec.unscheduledNote].filter(Boolean).join(" · ");
+        return `
+          <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm space-y-2.5">
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <h4 class="font-bold text-slate-900 text-sm">${escapeHtml(rec.name)}</h4>
+                <p class="text-xs text-slate-400 font-mono">${rec.serviceId ? `編號 ${escapeHtml(rec.serviceId)}` : ""} · ${rec.units}台 (${Number(rec.points).toFixed(1)}點)</p>
+              </div>
+              ${getStatusBadgeHtml(ev)}
+            </div>
+
+            <div class="bg-slate-50 rounded-xl px-3 py-2 flex items-center justify-between gap-2">
+              <div>${formatContactHtml(rec)}</div>
+              <div class="text-right">
+                <div class="text-[11px] text-slate-400">保養日期 / 週期</div>
+                <div class="font-mono font-bold text-sm text-slate-800">${escapeHtml(ev.dateDisplay)} · ${getFreqBadgeHtml(rec.freq)}</div>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between pt-1">
+              <span class="text-xs text-slate-500 truncate max-w-[75%]">${notes ? escapeHtml(notes) : "無備註"}</span>
+              <button type="button" onclick="openDetailModal(${rec.id})" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-blue-100 text-slate-700 text-xs font-semibold cursor-pointer">
+                編輯
+              </button>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderCalendar() {
+      const m = getTargetMonth();
+      const ref = getReferenceDateObj();
+      const year = ref.year || 2026;
+      const firstDayWeek = new Date(year, m - 1, 1).getDay();
+      const daysInMonth = new Date(year, m, 0).getDate();
+
+      // 依日期分組
+      const dayMap = {};
+      records.forEach(rec => {
+        const parsed = parseMaintenanceDate(rec.date, m);
+        if (parsed && parsed.month === m) {
+          if (!dayMap[parsed.day]) dayMap[parsed.day] = [];
+          dayMap[parsed.day].push(rec);
+        }
+      });
+
+      const grid = document.getElementById("calendarGrid");
+      let cells = "";
+
+      for (let i = 0; i < firstDayWeek; i++) {
+        cells += `<div class="h-20 rounded-xl bg-slate-50/60"></div>`;
+      }
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const items = dayMap[d] || [];
+        const isRefDay = (ref.month === m && ref.day === d);
+        const isSelected = selectedCalendarDay === d;
+
+        let borderClass = "border-slate-200/80 hover:border-blue-400 bg-white";
+        if (isSelected) borderClass = "border-2 border-blue-600 bg-blue-50/50 shadow-xs";
+        else if (isRefDay) borderClass = "border-2 border-blue-400 bg-blue-50/20";
+
+        cells += `
+          <button type="button" onclick="selectCalendarDate(${d})" class="h-20 rounded-xl border ${borderClass} p-1.5 flex flex-col justify-between text-left transition cursor-pointer">
+            <div class="flex items-center justify-between w-full">
+              <span class="text-xs font-bold tabular-nums ${isRefDay ? "text-blue-600" : "text-slate-700"}">${d}</span>
+              ${items.length > 0 ? `<span class="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 tabular-nums">${items.length}案</span>` : ""}
+            </div>
+            <div class="w-full space-y-0.5 overflow-hidden">
+              ${items.slice(0, 2).map(it => `<div class="text-[10px] truncate text-slate-600 bg-slate-100 px-1 rounded">${escapeHtml(it.name)}</div>`).join("")}
+            </div>
+          </button>
+        `;
+      }
+
+      grid.innerHTML = cells;
+      renderSelectedDayDetail(dayMap[selectedCalendarDay] || []);
+    }
+
+    function selectCalendarDate(day) {
+      selectedCalendarDay = day;
+      renderCalendar();
+    }
+
+    function renderSelectedDayDetail(items) {
+      const m = getTargetMonth();
+      const ref = getReferenceDateObj();
+      const weekNames = ["週日", "週一", "週二", "週三", "週四", "週五", "週六"];
+      const dt = new Date(ref.year || 2026, m - 1, selectedCalendarDay);
+      const wName = weekNames[dt.getDay()] || "";
+
+      document.getElementById("selectedDayTitle").textContent = `${ref.year || 2026}/${m}/${selectedCalendarDay} (${wName})`;
+      document.getElementById("selectedDayBadge").textContent = `${items.length} 案`;
+
+      const listEl = document.getElementById("selectedDayList");
+      if (items.length === 0) {
+        listEl.innerHTML = `<p class="text-xs text-slate-400 py-6 text-center">當日尚無排程或保養紀錄</p>`;
+        return;
+      }
+
+      listEl.innerHTML = items.map(rec => `
+        <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-xs text-slate-900">${escapeHtml(rec.name)}</span>
+            <span class="text-[11px] font-mono text-slate-500">${rec.units}台 / ${Number(rec.points).toFixed(1)}點</span>
+          </div>
+          <div class="text-xs text-slate-600 flex items-center justify-between">
+            <span>${rec.contactName ? `${escapeHtml(rec.contactName)} ` : ""}${rec.contactPhone ? `<a href="tel:${escapeHtml(rec.contactPhone)}" class="text-blue-600 underline font-mono">${escapeHtml(rec.contactPhone)}</a>` : ""}</span>
+            <span class="text-slate-400">${escapeHtml(rec.appointment || rec.unscheduledNote || "")}</span>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function selectWeek(weekNum) {
+      selectedWeek = weekNum;
+      document.querySelectorAll(".week-tab").forEach(btn => {
+        if (Number(btn.dataset.week) === weekNum) {
+          btn.className = "week-tab px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-600 text-white cursor-pointer";
+        } else {
+          btn.className = "week-tab px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 cursor-pointer";
+        }
+      });
+      renderWeeklyReport();
+    }
+
+    function renderWeeklyReport() {
+      const m = getTargetMonth();
+      const ranges = {
+        1: [1, 7],
+        2: [8, 14],
+        3: [15, 21],
+        4: [22, 31]
+      };
+      const [startD, endD] = ranges[selectedWeek] || [15, 21];
+
+      const lines = [`【保六組 · 張懷恩】${m}月第${selectedWeek}週 (${m}/${startD}~${m}/${endD}) 保養週報表`];
+      let totalCases = 0;
+
+      for (let d = startD; d <= endD; d++) {
+        const dayItems = records.filter(rec => {
+          const p = parseMaintenanceDate(rec.date, m);
+          return p && p.month === m && p.day === d;
+        });
+        if (dayItems.length > 0) {
+          totalCases += dayItems.length;
+          lines.push(`\n■ ${m}/${d}（共 ${dayItems.length} 案）：`);
+          dayItems.forEach(it => {
+            const contactStr = it.contactName || it.contactPhone
+              ? ` [${[it.contactName, it.contactPhone].filter(Boolean).join(" ")}]`
+              : "";
+            lines.push(`  - ${it.name}${contactStr}`);
+          });
+        }
+      }
+
+      if (totalCases === 0) {
+        lines.push("\n（本週區間尚無排程或完工紀錄）");
+      }
+
+      document.getElementById("weeklyReportOutput").textContent = lines.join("\n");
+    }
+
+    function copyWeeklyReportText() {
+      const text = document.getElementById("weeklyReportOutput").textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        showToast("週報表文字已複製到剪貼簿");
+      });
+    }
+
+    // =========================================================================
+    // 6. INTERACTIONS, FILTERS, MODALS & CSV EXPORT
+    // =========================================================================
+    function handleRefDateChange() {
+      const ref = getReferenceDateObj();
+      document.getElementById("monthSelect").value = String(ref.month);
+      selectedCalendarDay = ref.day;
+      refreshAllViews();
+    }
+
+    function handleMonthChange() {
+      refreshAllViews();
+    }
+
+    function setStatusFilter(status) {
+      currentStatusFilter = status;
+      document.querySelectorAll(".status-pill").forEach(btn => {
+        const isTarget = btn.dataset.status === status;
+        if (isTarget) {
+          btn.className = "status-pill px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 text-white transition shrink-0 cursor-pointer";
+        } else if (btn.dataset.status === "due_unscheduled") {
+          btn.className = "status-pill px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition shrink-0 cursor-pointer";
+        } else {
+          btn.className = "status-pill px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition shrink-0 cursor-pointer";
+        }
+      });
+      renderListView();
+    }
+
+    function quickFilterFromCard(status) {
+      switchTab("list");
+      setStatusFilter(status);
+    }
+
+    function switchTab(tabName) {
+      const listView = document.getElementById("view-list");
+      const calView = document.getElementById("view-calendar");
+      const tabListBtn = document.getElementById("tab-list");
+      const tabCalBtn = document.getElementById("tab-calendar");
+
+      if (tabName === "list") {
+        listView.classList.remove("hidden");
+        calView.classList.add("hidden");
+        tabListBtn.className = "flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition bg-slate-900 text-white shadow-sm cursor-pointer";
+        tabCalBtn.className = "flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition text-slate-600 hover:bg-slate-100 cursor-pointer";
+      } else {
+        listView.classList.add("hidden");
+        calView.classList.remove("hidden");
+        tabCalBtn.className = "flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition bg-slate-900 text-white shadow-sm cursor-pointer";
+        tabListBtn.className = "flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition text-slate-600 hover:bg-slate-100 cursor-pointer";
+        renderCalendar();
+        renderWeeklyReport();
+      }
+    }
+
+    function openSyncModal() {
+      const m = document.getElementById("syncModal");
+      m.classList.remove("hidden");
+      m.classList.add("flex");
+    }
+
+    function closeSyncModal() {
+      const m = document.getElementById("syncModal");
+      m.classList.add("hidden");
+      m.classList.remove("flex");
+    }
+
+    function openDetailModal(id) {
+      const rec = records.find(r => r.id === id);
+      if (!rec) return;
+
+      document.getElementById("formRecordId").value = rec.id;
+      document.getElementById("formName").value = rec.name;
+      document.getElementById("formContactName").value = rec.contactName || "";
+      document.getElementById("formContactPhone").value = rec.contactPhone || "";
+      document.getElementById("formHomePhone").value = rec.homePhone || "";
+      document.getElementById("formFreq").value = rec.freq || "每";
+      document.getElementById("formDate").value = rec.date || "";
+      document.getElementById("formAppointment").value = rec.appointment || "";
+      document.getElementById("formUnscheduledNote").value = rec.unscheduledNote || "";
+
+      const m = document.getElementById("detailModal");
+      m.classList.remove("hidden");
+      m.classList.add("flex");
+    }
+
+    function closeDetailModal() {
+      const m = document.getElementById("detailModal");
+      m.classList.add("hidden");
+      m.classList.remove("flex");
+    }
+
+    function handleSaveDetail(event) {
+      event.preventDefault();
+      const id = Number(document.getElementById("formRecordId").value);
+      const rec = records.find(r => r.id === id);
+      if (!rec) return;
+
+      rec.contactName = document.getElementById("formContactName").value.trim();
+      rec.contactPhone = document.getElementById("formContactPhone").value.trim();
+      rec.homePhone = document.getElementById("formHomePhone").value.trim();
+      rec.freq = document.getElementById("formFreq").value;
+      rec.date = document.getElementById("formDate").value.trim();
+      rec.appointment = document.getElementById("formAppointment").value.trim();
+      rec.unscheduledNote = document.getElementById("formUnscheduledNote").value.trim();
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+      closeDetailModal();
+      refreshAllViews();
+      showToast(`已更新「${rec.name}」的資料`);
+    }
+
+    function restoreSampleData() {
+      records = JSON.parse(JSON.stringify(INITIAL_RECORDS));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+      refreshAllViews();
+      closeSyncModal();
+      showToast("已還原為內建範例資料");
+    }
+
+    function toggleAutoRefresh() {
+      autoRefreshEnabled = !autoRefreshEnabled;
+      const icon = document.getElementById("autoRefreshIcon");
+      const label = document.getElementById("autoRefreshLabel");
+
+      if (autoRefreshEnabled) {
+        icon.className = "fa-solid fa-clock-rotate-left text-emerald-400";
+        label.textContent = "定時更新：開 (5分)";
+        startAutoRefreshTimer();
+        showToast("已開啟每 5 分鐘自動背景同步");
+      } else {
+        icon.className = "fa-solid fa-clock-rotate-left text-slate-500";
+        label.textContent = "定時更新：關";
+        if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+        showToast("已關閉自動背景同步");
+      }
+    }
+
+    function startAutoRefreshTimer() {
+      if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+      autoRefreshTimer = setInterval(() => {
+        if (autoRefreshEnabled) syncFromGoogleSheet(true);
+      }, 5 * 60 * 1000);
+    }
+
+    function exportCSV() {
+      const headers = ["大樓名稱", "服務編號", "聯絡人姓名", "聯絡電話", "家電", "次數", "保養/排程日期", "判定狀態", "台數", "點數", "預約項目", "備註"];
+      const rows = records.map(rec => {
+        const ev = evaluateRecord(rec);
+        return [
+          rec.name,
+          rec.serviceId,
+          rec.contactName,
+          rec.contactPhone,
+          rec.homePhone,
+          rec.freq,
+          ev.dateDisplay,
+          ev.label,
+          rec.units,
+          rec.points,
+          rec.appointment,
+          rec.unscheduledNote
+        ].map(v => `"${String(v || "").replace(/"/g, '""')}"`).join(",");
+      });
+
+      const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `電梯保養管理明細_${document.getElementById("refDateInput").value}.csv`;
+      link.click();
+      showToast("已匯出含聯絡人與電話的 CSV 檔案");
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById("toast");
+      document.getElementById("toastMessage").textContent = msg;
+      toast.classList.remove("translate-y-20", "opacity-0");
+      setTimeout(() => {
+        toast.classList.add("translate-y-20", "opacity-0");
+      }, 3000);
+    }
+
+    // =========================================================================
+    // 7. BOOTSTRAP
+    // =========================================================================
+    window.addEventListener("DOMContentLoaded", () => {
+      try {
+        const cached = localStorage.getItem(STORAGE_KEY);
+        records = cached ? JSON.parse(cached) : JSON.parse(JSON.stringify(INITIAL_RECORDS));
+      } catch {
+        records = JSON.parse(JSON.stringify(INITIAL_RECORDS));
+      }
+      refreshAllViews();
+      startAutoRefreshTimer();
+      syncFromGoogleSheet(true);
+    });
+  </script>
+</body>
+</html>
